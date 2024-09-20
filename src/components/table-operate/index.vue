@@ -78,6 +78,7 @@ const hideButton = computed(() => props.data.slice(1));
 .el-button {
   font-size: 14px;
   font-family: PingFangRegular;
+  outline: none;
 }
 
 .more-button {

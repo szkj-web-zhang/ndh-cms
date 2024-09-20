@@ -135,15 +135,17 @@ const rules = reactive<FormRules<typeof loginData>>({
 const handleCodeSend = async () => {
   loading.value = true;
   try {
-    await send_sms_code({
+    const { code } = await send_sms_code({
       account: loginData.phone,
       state: 2
     });
-    handleStartTimer();
-    ElMessage({
-      message: "验证码发送成功",
-      type: "success"
-    });
+    if (code === 200) {
+      handleStartTimer();
+      ElMessage({
+        message: "验证码发送成功",
+        type: "success"
+      });
+    }
     loading.value = false;
   } catch (error) {
     loading.value = false;

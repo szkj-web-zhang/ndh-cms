@@ -1,4 +1,4 @@
-import { PageResponse } from "..";
+import { PageRequest, PageResponse } from "..";
 
 export namespace Dish {
   // 菜品列表分类响应数据
@@ -31,5 +31,25 @@ export namespace Dish {
   // 菜品列表响应数据
   export interface ListResponse extends PageResponse {
     list: ItemData[];
+  }
+}
+
+export namespace Category {
+  // 分类item
+  export interface Item {
+    categoryId: number; //分类id
+    parentId: number; //父级分类id
+    categoryName: string; //分类名称
+    categoryPicture: string; //分类图片
+    sort: number; //排序
+    children?: Item[]; //子分类
+  }
+  // 菜品列表响应数据
+  export interface ListResponse extends PageResponse {
+    list: Item[];
+  }
+  // 子分类入参
+  export interface ChildrenCategoryParams extends PageRequest {
+    categoryId: number;
   }
 }

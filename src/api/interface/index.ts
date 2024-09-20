@@ -9,6 +9,12 @@ export interface ResultData<T = any> extends Result {
   data: T;
 }
 
+// 分页请求参数
+export interface PageRequest {
+  pageNum: number;
+  pageSize: number;
+}
+
 // 分页响应参数
 export interface PageResponse {
   totalCount: number; //总数量

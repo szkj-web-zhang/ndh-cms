@@ -1,6 +1,7 @@
 import router from "@/router/index";
 import { useAuthStore } from "@/stores/modules/auth";
 import { useUserStore } from "@/stores/modules/user";
+import { dishAdd, dishesDetail } from "@/utils/router-handler";
 import { RouteRecordRaw } from "vue-router";
 
 // 引入 views 文件夹下所有 vue 文件
@@ -20,11 +21,19 @@ export const initDynamicRouter = async () => {
     }
 
     // 2. 遍历router，通过remark字段做文件路径映射，动态加载路由
-    authStore.flatMenuListGet.forEach(item => {
+    authStore.flatMenuListGet.forEach(async item => {
       item.children && delete item.children;
       const folder = item.meta.remark;
       item.component = modules[`/src/views/pages/${folder}/index.vue`];
       router.addRoute("layout", item as unknown as RouteRecordRaw);
+    });
+    const routes = router.getRoutes();
+
+    routes.forEach(route => {
+      if (route.path === "/dishes-list") {
+        router.addRoute("layout", dishesDetail as unknown as RouteRecordRaw);
+        router.addRoute("layout", dishAdd as unknown as RouteRecordRaw);
+      }
     });
   } catch (err) {
     userStore.setToken("");

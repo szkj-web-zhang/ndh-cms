@@ -231,14 +231,6 @@ searchColumns.value?.forEach((column, index) => {
   }
 });
 
-watch(
-  () => searchColumns.value,
-  () => {
-    console.log(JSON.parse(JSON.stringify(searchColumns.value)));
-  },
-  { deep: true, immediate: true }
-);
-
 /**
  * 清空选中数据列表
  */

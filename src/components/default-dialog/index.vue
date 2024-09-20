@@ -1,6 +1,7 @@
 <template>
   <el-dialog
-    width="30%"
+    :width="width"
+    :top="top"
     style="min-height: 182px; padding: 0; border-radius: 8px"
     v-model="isShow"
     :show-close="false"
@@ -32,12 +33,19 @@
 import { ref } from "vue";
 
 interface PropsType {
-  iconName: string;
-  iconColor: string;
+  iconName?: string;
+  iconColor?: string;
   title: string;
+  width?: string | number;
+  top?: string;
 }
 
-const props = defineProps<PropsType>();
+const props = withDefaults(defineProps<PropsType>(), {
+  width: "50%",
+  top: "25vh",
+  iconName: "icon-question",
+  iconColor: "#FFA033"
+});
 
 const emit = defineEmits<{
   confirm: [value: number | string | undefined];

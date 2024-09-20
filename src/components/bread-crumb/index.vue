@@ -1,7 +1,7 @@
 <template>
   <div class="crumb-container card flex-y">
     <div class="crumb-list flex-y">
-      <div class="flex-r" v-for="item in crumbList" :key="item">
+      <div class="flex-r" v-for="item in list" :key="item">
         {{ item }}
         <span class="flex-x-y">/</span>
       </div>
@@ -13,31 +13,11 @@
 </template>
 
 <script lang="ts" setup>
-import { useAuthStore } from "@/stores/modules/auth";
-import { handleGetRootRouter } from "@/utils/data-handler";
-import { storeToRefs } from "pinia";
-import { ref, watch } from "vue";
-import { useRoute } from "vue-router";
+interface PropsType {
+  list: string[];
+}
 
-// route
-const route = useRoute();
-// pinia
-const { router } = storeToRefs(useAuthStore());
-// 面包屑列表
-const crumbList = ref<string[]>([]);
-
-watch(
-  () => route.path,
-  () => {
-    const root = handleGetRootRouter(router.value, route.path);
-    if (root) {
-      crumbList.value = [root.name, route.meta.title];
-    } else {
-      crumbList.value = [route.meta.title as string];
-    }
-  },
-  { deep: true, immediate: true }
-);
+defineProps<PropsType>();
 </script>
 
 <style lang="scss" scoped>

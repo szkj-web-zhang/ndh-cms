@@ -62,7 +62,6 @@ router.beforeEach(async (to, from, next) => {
     await initDynamicRouter();
     return next({ ...to, replace: true });
   }
-
   // 正常访问页面
   next();
 });
