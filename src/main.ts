@@ -4,6 +4,7 @@ import App from "./App.vue";
 import "@/styles/global.scss";
 import "@/styles/reset.scss";
 import "@/styles/font.scss";
+import "@wangeditor/editor/dist/css/style.css";
 // icon
 import "@/assets/icon/iconfont.js";
 // 引入icon组件

@@ -29,7 +29,10 @@ export const dishes_remove_post = (params: { goodsIds: string }) => {
 
 // 菜品详情
 export const dish_detail_get = (params: { goodsId: number }) => {
-  return http.post(PORT1 + `/goods/goodsDetail`, params);
+  return http.post<Dish.DishDetailResponse>(
+    PORT1 + `/goods/goodsDetail`,
+    params
+  );
 };
 
 // 获取菜品一级分类
@@ -46,4 +49,9 @@ export const dish_category_second_get = (
   return http.get<Category.ListResponse>(PORT1 + `/category/list`, params, {
     loading: false
   });
+};
+
+// 新增菜品
+export const dish_add_post = (params: Dish.AddParams) => {
+  return http.post(PORT1 + `/goods/add`, params);
 };

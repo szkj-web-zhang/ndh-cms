@@ -5,7 +5,7 @@
         <el-button type="primary" plain @click="handleBackToList">
           取消
         </el-button>
-        <el-button type="primary">确认新增</el-button>
+        <el-button type="primary" @click="handleConfirmAdd">确认新增</el-button>
       </template>
     </bread-crumb>
     <el-scrollbar class="card">
@@ -50,6 +50,7 @@
             :accept="['image/jpeg', 'image/png'].join(',')"
             :http-request="handleHttpUpload"
             :before-upload="handleBeforeUpload"
+            :on-remove="handleRemoveImg"
           >
             <svg-icon name="icon-add" fill="#7A8799"></svg-icon>
           </el-upload>
@@ -92,36 +93,27 @@
             placeholder="请输入单位名称"
           />
         </el-form-item>
-        <el-form-item label="规格" class="specs-type">
+        <el-form-item label="库存" prop="totalStocks">
+          <el-input
+            type="number"
+            v-model="formData.totalStocks"
+            placeholder="请输入库存数量"
+          />
+        </el-form-item>
+        <el-form-item class="specs-type" label="规格">
           <el-radio-group v-model="specsType">
             <el-radio :value="1">单规格</el-radio>
             <el-radio :value="2">多规格（ 需单独配置价格及库存）</el-radio>
           </el-radio-group>
-          <div class="single-specs" v-if="specsType === 1">
-            <div
-              class="single-list"
-              v-for="item in formData.specs"
-              :key="item.id"
-            >
-              <el-input v-model="item.skuName" placeholder="请输入规格名字" />
-              <el-input
-                type="number"
-                v-model="item.price"
-                placeholder="请输入单价"
-              />
-              <el-input
-                type="number"
-                v-model="item.stocks"
-                placeholder="请输入库存数量"
-              />
-            </div>
-          </div>
           <div class="multi-specs" v-if="specsType === 2">
             <div
               class="multi-list"
               v-for="(item, index) in formData.specs"
-              :key="item.id"
+              :key="index"
             >
+              <div class="drag-icon">
+                <svg-icon name="icon-draggable" fill="#7A8799" />
+              </div>
               <el-input v-model="item.skuName" placeholder="请输入规格名字" />
               <el-input
                 type="number"
@@ -136,12 +128,12 @@
               <div class="operat-group flex-y">
                 <div
                   class="delete-btn flex-x-y"
-                  :class="{ disabled: formData.specs.length === 1 }"
+                  :class="{ disabled: formData.specs?.length === 1 }"
                   @click="handleDeleteSpec(index)"
                 >
                   <svg-icon
                     name="icon-minus"
-                    :fill="formData.specs.length === 1 ? '#BCC5CC' : '#1A7DFF'"
+                    :fill="formData.specs?.length === 1 ? '#BCC5CC' : '#1A7DFF'"
                   />
                 </div>
                 <div class="delete-btn flex-x-y" @click="handleAddSpec">
@@ -163,28 +155,27 @@
           <div
             class="property-list"
             v-for="(item, index) in formData.properties"
-            :key="item.id"
+            :key="index"
           >
+            <div class="drag-icon">
+              <svg-icon name="icon-draggable" fill="#7A8799" />
+            </div>
             <el-input v-model="item.paramName" placeholder="请输入参数名字" />
-            <el-input
-              type="number"
-              v-model="item.paramValue"
-              placeholder="请输入参数值"
-            />
+            <el-input v-model="item.paramValue" placeholder="请输入参数值" />
             <div class="operat-group flex-y">
               <div
                 class="delete-btn flex-x-y"
-                :class="{ disabled: formData.properties.length === 1 }"
-                @click="handleDeleteSpec(index)"
+                :class="{ disabled: formData.properties?.length === 1 }"
+                @click="handleDeleteProperty(index)"
               >
                 <svg-icon
                   name="icon-minus"
                   :fill="
-                    formData.properties.length === 1 ? '#BCC5CC' : '#1A7DFF'
+                    formData.properties?.length === 1 ? '#BCC5CC' : '#1A7DFF'
                   "
                 />
               </div>
-              <div class="delete-btn flex-x-y" @click="handleAddSpec">
+              <div class="delete-btn flex-x-y" @click="handleAddProperty">
                 <svg-icon name="icon-add" fill="#1A7DFF" />
               </div>
             </div>
@@ -198,51 +189,34 @@
             调整参数展示顺序
           </div>
         </el-form-item>
-        <!-- console -->
-        <div @click="console.log(formData)"></div>
+        <el-form-item label="菜品详情" prop="content" class="dish-editor">
+          <wang-editor height="auto" v-model:value="formData.content" />
+        </el-form-item>
       </el-form>
     </el-scrollbar>
   </div>
 </template>
 
 <script lang="ts" setup>
+import { Dish } from "@/api/interface/dish-manage";
 import {
+  dish_add_post,
   dish_category_first_get,
   dish_category_second_get
 } from "@/api/modules/dish-manage";
 import { upload_images } from "@/api/modules/upload";
 import { useTabsStore } from "@/stores/modules/tabs";
-import { generateUUID } from "@/utils/table-handler";
 import {
   ElMessage,
   FormInstance,
+  FormRules,
+  UploadFile,
   UploadProps,
   UploadRequestOptions,
   UploadUserFile
 } from "element-plus";
-import { onBeforeMount, reactive, ref, watch } from "vue";
+import { computed, onBeforeMount, reactive, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
-
-interface FormDataType {
-  categoryId?: number;
-  goodsName: string;
-  imgs: string;
-  tags?: string;
-  brief?: string;
-  price: string;
-  goodsUnit: string;
-  specs: {
-    id: number | string;
-    skuName: string;
-    price: string;
-    stocks?: number;
-  }[];
-  properties: {
-    id: string | number;
-    paramName: string;
-    paramValue: string;
-  }[];
-}
 
 // router
 const route = useRoute();
@@ -254,21 +228,20 @@ const formRef = ref<FormInstance>();
 // 图片列表
 const imgList = ref<UploadUserFile[]>([]);
 // 表单信息
-const formData = ref<FormDataType>({
+const formData = ref<Dish.AddParams>({
   goodsName: "",
-  imgs: "",
   price: "",
   goodsUnit: "",
+  content: "",
   specs: [
     {
-      id: generateUUID(),
       skuName: "",
-      price: ""
+      price: "",
+      stocks: ""
     }
   ],
   properties: [
     {
-      id: generateUUID(),
       paramName: "",
       paramValue: ""
     }
@@ -277,7 +250,7 @@ const formData = ref<FormDataType>({
 // 分类列表
 const categoryList = ref<{ value: number; label: string }[]>([]);
 // 规格类型
-const specsType = ref<number>(2);
+const specsType = ref<number>(1);
 // 面包屑列表
 const breadList = ["菜品管理", "菜品列表", "新增菜品"];
 // tree配置
@@ -287,21 +260,15 @@ const props = {
   isLeaf: "isLeaf"
 };
 // 表单校验规则
-const rules = reactive({
+const rules = reactive<FormRules>({
   categoryId: [{ required: true }],
   goodsName: [{ required: true }],
-  imgs: [{ required: true }],
+  imgs: [{ required: true, trigger: "change" }],
   price: [{ required: true }],
-  goodsUnit: [{ required: true }]
+  goodsUnit: [{ required: true }],
+  content: [{ required: true }],
+  totalStocks: [{ required: true }]
 });
-
-const list = ref([
-  { id: 1, name: "1111" },
-  { id: 2, name: "22222" },
-  { id: 3, name: "3333" },
-  { id: 4, name: "4444" },
-  { id: 5, name: "5555" }
-]);
 
 /**
  * 获取一级分类列表
@@ -334,9 +301,9 @@ watch(
   () => {
     formData.value.specs = [
       {
-        id: generateUUID(),
         skuName: "",
-        price: ""
+        price: "",
+        stocks: ""
       }
     ];
   },
@@ -378,17 +345,34 @@ const handleInputNumber = (val: string) => {
  * 删除规格
  */
 const handleDeleteSpec = (index: number) => {
-  formData.value.specs.splice(index, 1);
+  formData.value.specs?.splice(index, 1);
 };
 
 /**
  * 新增规格
  */
 const handleAddSpec = () => {
-  formData.value.specs.push({
-    id: generateUUID(),
+  formData.value.specs?.push({
     skuName: "",
-    price: ""
+    price: "",
+    stocks: ""
+  });
+};
+
+/**
+ * 删除参数
+ */
+const handleDeleteProperty = (index: number) => {
+  formData.value.properties?.splice(index, 1);
+};
+
+/**
+ * 新增参数
+ */
+const handleAddProperty = () => {
+  formData.value.properties?.push({
+    paramName: "",
+    paramValue: ""
   });
 };
 
@@ -406,26 +390,91 @@ const handleBeforeUpload: UploadProps["beforeUpload"] = rawFile => {
 /**
  * 上传图片
  */
-let tempImages: string[] = [];
+let tempImages = ref<{ id: number; url: string }[]>([]);
 const handleHttpUpload = async (options: UploadRequestOptions) => {
   let params = new FormData();
   params.append("pictures", options.file);
   params.append("folderName", "dishes");
   try {
     const { data } = await upload_images(params);
-    tempImages.push(data);
-    formData.value.imgs = tempImages.join(",");
+    tempImages.value.push({ id: options.file.uid, url: data });
+    formData.value.imgs = tempImages.value.map(item => item.url).join(",");
   } catch (error) {
     options.onError(error as any);
   }
 };
 
 /**
+ * 删除图片
+ */
+const handleRemoveImg = (res: UploadFile) => {
+  const index = tempImages.value.findIndex(item => item.id === res.uid);
+  if (index !== -1) tempImages.value.splice(index, 1);
+  formData.value.imgs = tempImages.value.map(item => item.url).join(",");
+};
+
+/**
  * 返回列表
  */
 const handleBackToList = () => {
-  router.push("/dishes-list");
   tabsStore.handleRemoveTab(route.fullPath);
+  if (tabsStore.tabs.length !== 1) {
+    router.push("/dishes-list");
+  }
+};
+
+/**
+ * 新增菜品接口
+ * @description 选择单规格就复制菜品内容，多规格入参规格数组
+ */
+const handleAddDish = async () => {
+  const specs = formData.value.specs?.map(item => ({
+    skuName: item.skuName,
+    price: item.price,
+    stocks: Number(item.stocks)
+  }));
+  delete formData.value.tags;
+  const properties = formData.value.properties?.filter(
+    item => !(!item.paramName && !item.paramValue)
+  );
+  const res = await dish_add_post({
+    ...formData.value,
+    properties,
+    totalStocks: Number(formData.value.totalStocks),
+    specs:
+      specsType.value === 1
+        ? [
+            {
+              skuName: formData.value.goodsName,
+              price: formData.value.price,
+              stocks: Number(formData.value.totalStocks)
+            }
+          ]
+        : specs
+  });
+  if (res.code === 200) {
+    ElMessage.success("新增成功");
+    tabsStore.handleRemoveTab(route.fullPath);
+  }
+};
+
+/**
+ * 确认新增
+ * @description 校验表单内容，选择单规格就复制菜品内容，多规格入参规格数组，并且校验规格是否有空值
+ */
+const handleConfirmAdd = async () => {
+  const hasEmptyValue = formData.value.specs?.some(obj =>
+    Object.values(obj).some(value => value === null || value === "")
+  );
+  handleAddDish();
+  await formRef.value?.validate(valid => {
+    if (!valid) {
+      ElMessage.error("请检查表单内容");
+    } else if (specsType.value === 2 && hasEmptyValue) {
+      ElMessage.error("请填写完整的规格信息");
+    } else {
+    }
+  });
 };
 </script>
 
@@ -435,6 +484,14 @@ const handleBackToList = () => {
   font-family: PingFangMedium;
   font-size: 14px;
   border-radius: 8px;
+}
+
+.el-input {
+  :deep(.el-input__wrapper) input[type="number"]::-webkit-inner-spin-button,
+  input[type="number"]::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
 }
 
 .dishes-add-container {
@@ -449,6 +506,11 @@ const handleBackToList = () => {
   }
 }
 
+.required-mark {
+  color: #f55549;
+  margin-left: 4px;
+}
+
 .el-button {
   @include btn();
 }
@@ -456,6 +518,7 @@ const handleBackToList = () => {
 .el-scrollbar {
   height: calc(100% - 88px);
   padding: 16px;
+  padding-bottom: 24px;
 }
 
 .el-form-item {
@@ -479,6 +542,9 @@ const handleBackToList = () => {
     border-radius: 8px 8px 8px 8px;
     border: 1px solid #e1eaf5;
     box-shadow: none;
+    &:hover {
+      box-shadow: none;
+    }
 
     .el-select__selected-item {
       color: #08090a;
@@ -547,14 +613,6 @@ const handleBackToList = () => {
   }
 }
 
-.specs-type,
-.dish-params {
-  :deep(.el-form-item__content) {
-    flex-direction: column;
-    align-items: flex-start;
-  }
-}
-
 .el-textarea {
   width: 828px;
   :deep(.el-textarea__inner) {
@@ -602,16 +660,33 @@ const handleBackToList = () => {
     height: 100%;
     display: flex;
     justify-content: space-around;
+    align-items: center;
+    .el-input {
+      &:nth-child(3) {
+        margin: 0 10px;
+      }
+    }
   }
-  .el-input {
-    &:nth-child(2) {
-      margin: 0 10px;
+  .single-list {
+    .el-input {
+      &:nth-child(2) {
+        margin: 0 10px;
+      }
+      &:nth-child(3) {
+        margin: 0;
+      }
     }
-    :deep(.el-input__wrapper) input[type="number"]::-webkit-inner-spin-button,
-    input[type="number"]::-webkit-outer-spin-button {
-      -webkit-appearance: none;
-      margin: 0;
-    }
+  }
+}
+
+.drag-icon {
+  width: 24px;
+  height: 24px;
+  cursor: pointer;
+  margin-right: 4px;
+  > svg {
+    width: 24px;
+    height: 24px;
   }
 }
 
@@ -691,12 +766,38 @@ const handleBackToList = () => {
   height: 40px;
   display: flex;
   justify-content: space-around;
+  align-items: center;
   margin-bottom: 4px;
-  &:last-child {
-    margin-bottom: 0;
-  }
   .el-input {
     margin-right: 12px;
+  }
+}
+
+.specs-type,
+.dish-params {
+  :deep(.el-form-item__content) {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
+
+.dish-params {
+  .specs-tips {
+    margin-top: 14px;
+  }
+}
+
+.dish-editor {
+  :deep(.el-form-item__content) {
+    margin-top: 2px;
+    .editor-box {
+      width: 828px;
+      border-radius: 8px;
+      border: 1px solid #e1eaf5;
+    }
+    .editor-toolbar {
+      background-color: #e1eaf5;
+    }
   }
 }
 </style>

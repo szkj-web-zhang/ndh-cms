@@ -95,6 +95,7 @@ provide("refresh", handleRefreshPage);
 
 .el-main {
   background: #f5f7fa;
+  overflow: hidden;
   padding: 16px 20px 20px 20px;
 }
 </style>
